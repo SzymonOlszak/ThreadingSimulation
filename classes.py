@@ -1,0 +1,72 @@
+import threading
+import time
+import math
+import random
+from interface import VisualisationWindow
+import tkinter as Tk
+speed = 1000
+
+
+class Task:
+    def __init__(self, user_id, file_size):
+        self.user_id = user_id
+        self.file_size = file_size
+        self.created_at = time.time()
+
+
+class Scheduler:
+    def __init__(self):
+        self.queue = []
+        self.lock = threading.Lock()
+        self.user_tasks_count = {}
+        self.currently_processing = []
+
+    def add_task(self, task):
+        with self.lock:
+            self.queue.append(task)
+            self.user_tasks_count[task.user_id] = self.user_tasks_count.get(task.user_id, 0) + 1
+
+    def get_task(self):
+        with self.lock:
+            if not self.queue:
+                return None
+
+            active_users_count = len(self.user_tasks_count)
+            best = max(self.queue, key=lambda t: t.compute_priority(active_users_count))
+
+            self.queue.remove(best)
+            self.currently_processing.append(best)
+            return best
+
+    def complete_task(self, task):
+        with self.lock:
+            self.user_tasks_count[task.user_id] -= 1
+            self.currently_processing.remove(task)
+            if self.user_tasks_count[task.user_id] <= 0:
+                del self.user_tasks_count[task.user_id]
+
+    def compute_priority(self, task, active_users):
+        waiting_factor = (time.time() - task.created_at) ** 0.8 / active_users
+        size_factor = active_users / (1 + math.sqrt(task.file_size))
+
+        return waiting_factor + size_factor
+
+
+def worker(scheduler, upload_speed):
+    while True:
+        task = scheduler.get_task()
+        if not task:
+            break
+
+        print(f"Uploading user {task.user_id}, size {task.file_size}")
+
+        time.sleep(task.file_size / upload_speed)
+
+        scheduler.complete_task(task)
+        print(f"Done user {task.user_id}")
+
+
+
+
+
+
