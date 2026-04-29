@@ -1,9 +1,10 @@
 import threading
 import customtkinter as ctk
-from classes import worker, speed
+from classes import worker
 WIN_WIDTH = 600
 WIN_HEIGHT = 300
 TITLE = "ThreadsSimulation"
+speed = 2000
 
 
 class VisualisationWindow:
@@ -13,11 +14,11 @@ class VisualisationWindow:
         self.root.geometry(f"{WIN_WIDTH}x{WIN_HEIGHT}+100+100")
         self.root.resizable(False, False)
         self.root.title(TITLE)
-        self.root.configure(bg = "#333333")
+        self.root.configure(bg="#333333")
         self.start_button = ctk.CTkButton(self.root, text="Add", width=40, height=20, command=self.start_simulation)
         self.start_button.grid(row=0, column=0, columnspan=5, pady=10, padx=10)
         self.threads_labels = []
-        self.users_frames = []
+        self.users_widgets = {}
         self.users_labels = []
 
         for i in range(5):
@@ -35,17 +36,13 @@ class VisualisationWindow:
             user_label = ctk.CTkLabel(user, text=f" User {j + 1}", width=80, font=("Arial", 12, "bold"))
             user_label.pack(side='top')
             user_files_label = ctk.CTkLabel(user, text=f"{scheduler.user_tasks_count[j]} files left", width=80, font=("Arial", 12, "bold"))
-            user_label.pack(side='bottom')
+            user_files_label.pack(side='bottom')
             self.users_labels.append(user_label)
-            self.users_frames.append(user)
+            self.users_widgets[j] = (user, user_label)
 
     def start_simulation(self):
         self.start_button.configure(state="disabled")
-
-        for i in range(5):
-            t = threading.Thread(target=worker, args=(self.scheduler, speed), daemon=True)
-            t.start()
-
+        self.scheduler.start_workers(5, speed)
         self.update()
 
     def update(self):
@@ -68,6 +65,14 @@ class VisualisationWindow:
                 if count > 0:
                     self.users_labels[user_id].configure(text=f"User {user_id}\n{count} files")
                 else:
-                    del self.users_frames[user_id]
+                    current_users = set(users_dictionary.keys())
+                    existing_users = set(self.users_widgets.keys())
+                    to_remove = existing_users - current_users
+
+                    for user in to_remove:
+                        frame, _ = self.users_widgets[user]
+                        frame.destroy()
+                        del self.users_widgets[user]
+                    # del self.users_frames[user]
 
             self.root.after(200, self.update)

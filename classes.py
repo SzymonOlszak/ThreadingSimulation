@@ -4,7 +4,6 @@ import math
 import random
 
 import tkinter as Tk
-speed = 1000
 
 
 class Task:
@@ -20,6 +19,12 @@ class Scheduler:
         self.lock = threading.Lock()
         self.user_tasks_count = {}
         self.currently_processing = []
+
+    def start_workers(self, threads_count, speed):
+        for i in range(threads_count):
+            t = threading.Thread(target=worker, args=(self.scheduler, speed), daemon=True)
+            t.start()
+            
 
     def add_task(self, task):
         with self.lock:
