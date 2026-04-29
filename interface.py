@@ -35,8 +35,8 @@ class VisualisationWindow:
             user.grid(row=2, column=j, padx=10, pady=10)
             user_label = ctk.CTkLabel(user, text=f" User {j + 1}", width=80, font=("Arial", 12, "bold"))
             user_label.pack(side='top')
-            user_files_label = ctk.CTkLabel(user, text=f"{scheduler.user_tasks_count[j]} files left", width=80, font=("Arial", 12, "bold"))
-            user_files_label.pack(side='bottom')
+            # user_files_label = ctk.CTkLabel(user, text=f"{scheduler.user_tasks_count[j]} files left", width=80, font=("Arial", 12, "bold"))
+            # user_files_label.pack(side='bottom')
             self.users_labels.append(user_label)
             self.users_widgets[j] = (user, user_label)
 

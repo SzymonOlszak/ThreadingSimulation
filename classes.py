@@ -22,9 +22,8 @@ class Scheduler:
 
     def start_workers(self, threads_count, speed):
         for i in range(threads_count):
-            t = threading.Thread(target=worker, args=(self.scheduler, speed), daemon=True)
+            t = threading.Thread(target=worker, args=(self, speed), daemon=True)
             t.start()
-            
 
     def add_task(self, task):
         with self.lock:
@@ -51,8 +50,11 @@ class Scheduler:
         with self.lock:
             self.user_tasks_count[task.user_id] -= 1
             self.currently_processing.remove(task)
-            if self.user_tasks_count[task.user_id] <= 0:
+
+            if self.user_tasks_count[task.user_id] == 0:
                 del self.user_tasks_count[task.user_id]
+            # if len(self.queue) == 0:
+            #     del self.user_tasks_count[task.user_id]
 
     def compute_priority(self, task, active_users):
         waiting_factor = (time.time() - task.created_at) ** 0.8 / active_users
@@ -65,7 +67,8 @@ def worker(scheduler, upload_speed):
     while True:
         task = scheduler.get_task()
         if not task:
-            break
+            time.sleep(0.1)
+            continue
 
         print(f"Uploading user {task.user_id}, size {task.file_size}")
 
