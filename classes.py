@@ -19,11 +19,13 @@ class Scheduler:
         self.lock = threading.Lock()
         self.user_tasks_count = {}
         self.currently_processing = []
-
-    def start_workers(self, threads_count, speed):
+        self.threads = []
+        
+    def start_threads(self, threads_count, speed):
         for i in range(threads_count):
             t = threading.Thread(target=worker, args=(self, speed), daemon=True)
             t.start()
+            self.threads.append(t)
 
     def add_task(self, task):
         with self.lock:

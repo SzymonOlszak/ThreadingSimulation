@@ -13,11 +13,6 @@ import customtkinter as CTk
 def main():
     scheduler = Scheduler()
 
-    for user_id in range(5):
-        for i in range(random.randint(5,10)):
-            file_size = random.randint(1, 3000)
-            scheduler.add_task(Task(user_id, file_size))
-
     root = customtkinter.CTk()
     app = VisualisationWindow(root, scheduler)
 
