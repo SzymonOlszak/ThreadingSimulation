@@ -2,8 +2,10 @@ import threading
 import time
 import math
 import random
-
+import heapq
+from collections import deque
 import tkinter as Tk
+from collections import defaultdict
 
 
 class Task:
@@ -15,12 +17,12 @@ class Task:
 
 class Scheduler:
     def __init__(self):
-        self.queue = []
         self.lock = threading.Lock()
-        self.user_tasks_count = {}
+        self.user_tasks_count = defaultdict(int)
         self.currently_processing = []
         self.threads = []
-        
+        self.user_queues = {}
+
     def start_threads(self, threads_count, speed):
         for i in range(threads_count):
             t = threading.Thread(target=worker, args=(self, speed), daemon=True)
@@ -29,24 +31,45 @@ class Scheduler:
 
     def add_task(self, task):
         with self.lock:
-            self.queue.append(task)
-            if task.user_id not in self.user_tasks_count:
-                self.user_tasks_count[task.user_id] = 0
+            if task.user_id not in self.user_queues:
+                self.user_queues[task.user_id] = []
+                self.active_users.append(task.user_id)
+
+            heapq.heappush(
+                self.user_queues[task.user_id],
+                (task.file_size, task.created_at, task)
+            )
 
             self.user_tasks_count[task.user_id] += 1
-            # self.user_tasks_count[task.user_id] = self.user_tasks_count.get(task.user_id, 0) + 1
 
     def get_task(self):
         with self.lock:
-            if not self.queue:
+            if not self.user_queues:
+                return None
+            active_users_count = len(self.user_queues)
+            candidates = []
+
+            for user_id, queue in self.user_queues.items():
+
+                if queue:
+                    _, _, task = queue[0]
+
+                    priority = self.compute_priority(task,  max(1, active_users_count))
+                    candidates.append((priority, user_id, task))
+
+            if not candidates:
                 return None
 
-            active_users_count = max(1, len(self.user_tasks_count))
-            best = max(self.queue, key=lambda t: self.compute_priority(t, active_users_count))
+            _, best_user_id, best_task = max(candidates, key=lambda x: x[0])
 
-            self.queue.remove(best)
-            self.currently_processing.append(best)
-            return best
+            heapq.heappop(self.user_queues[best_user_id])
+
+            # active_users_count = max(1, len(self.user_tasks_count))
+            # best = max(self.queue, key=lambda t: self.compute_priority(t, active_users_count))
+            #
+            # self.queue.remove(best)
+            self.currently_processing.append(best_task)
+            return best_task
 
     def complete_task(self, task):
         with self.lock:
@@ -55,10 +78,11 @@ class Scheduler:
 
             if self.user_tasks_count[task.user_id] == 0:
                 del self.user_tasks_count[task.user_id]
-            # if len(self.queue) == 0:
-            #     del self.user_tasks_count[task.user_id]
+            if not self.user_queues[task.user_id]:
+                del self.user_queues[task.user_id]
 
-    def compute_priority(self, task, active_users):
+    @staticmethod
+    def compute_priority(task, active_users):
         waiting_factor = (time.time() - task.created_at) ** 0.8 / active_users
         size_factor = active_users / (1 + math.sqrt(task.file_size))
 

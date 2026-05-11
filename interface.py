@@ -121,9 +121,10 @@ class VisualisationWindow:
         self.update()
 
     def update(self):
+        self.disk_speed_entry.configure(state="disabled")
         with self.scheduler.lock:
             active_tasks = self.scheduler.currently_processing[:]
-            waiting = len(self.scheduler.queue)
+            waiting = sum(len(q) for q in (self.scheduler.user_queues.values()))
             users = len(self.scheduler.user_tasks_count)
             users_dictionary = self.scheduler.user_tasks_count.copy()
 
@@ -134,7 +135,7 @@ class VisualisationWindow:
                 user = ctk.CTkFrame(self.main_frame)
                 user.grid(row=2, column=user_id, padx=10, pady=10)
 
-                user_label = ctk.CTkLabel(user, text=f"User {user_id + 1}", font=("Arial", 12, "bold"))
+                user_label = ctk.CTkLabel(user, text=f"User", font=("Arial", 12, "bold"))
                 user_label.pack()
                 self.users_labels.append(user_label)
                 self.users_widgets[user_id] = (user, user_label)
@@ -142,14 +143,14 @@ class VisualisationWindow:
             for i in range(5):
                 if i < len(active_tasks):
                     task = active_tasks[i]
-                    self.threads_labels[i].configure(text=f"User: {task.user_id}\nSize: {task.file_size}",
+                    self.threads_labels[i].configure(text=f"User: {task.user_id + 1}\nSize: {task.file_size}",
                                                      text_color="green")
                 else:
                     self.threads_labels[i].configure(text="Awaiting...", text_color="gray")
 
             for user_id in current_users:
                 frame, label = self.users_widgets[user_id]
-                label.configure(text=f"User {user_id}\n{users_dictionary[user_id]} files")
+                label.configure(text=f"User {user_id + 1}\n{users_dictionary[user_id]} files")
 
             for user_id in existing_users - current_users:
                 frame, _ = self.users_widgets[user_id]
