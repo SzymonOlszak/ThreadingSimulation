@@ -33,7 +33,6 @@ class Scheduler:
         with self.lock:
             if task.user_id not in self.user_queues:
                 self.user_queues[task.user_id] = []
-                self.active_users.append(task.user_id)
 
             heapq.heappush(
                 self.user_queues[task.user_id],
