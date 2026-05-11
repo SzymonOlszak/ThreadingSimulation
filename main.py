@@ -6,17 +6,12 @@ import random
 import customtkinter
 
 from interface import VisualisationWindow
-from classes import Scheduler, Task, worker, speed
+from classes import Scheduler, Task
 import customtkinter as CTk
 
 
 def main():
     scheduler = Scheduler()
-
-    for user_id in range(5):
-        for i in range(random.randint(5, 50)):
-            file_size = random.randint(1, 30000)
-            scheduler.add_task(Task(user_id, file_size))
 
     root = customtkinter.CTk()
     app = VisualisationWindow(root, scheduler)
