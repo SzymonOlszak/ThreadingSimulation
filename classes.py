@@ -6,7 +6,7 @@ import heapq
 from collections import deque
 import tkinter as Tk
 from collections import defaultdict
-
+from itertools import count
 
 class Task:
     def __init__(self, user_id, file_size):
@@ -22,6 +22,7 @@ class Scheduler:
         self.currently_processing = []
         self.threads = []
         self.user_queues = {}
+        self.counter = count()
 
     def start_threads(self, threads_count, speed):
         for i in range(threads_count):
@@ -35,8 +36,7 @@ class Scheduler:
                 self.user_queues[task.user_id] = []
 
             heapq.heappush(
-                self.user_queues[task.user_id],
-                (task.file_size, task.created_at, task)
+                self.user_queues[task.user_id], (task.file_size, task.created_at, next(self.counter), task)
             )
 
             self.user_tasks_count[task.user_id] += 1
@@ -51,7 +51,7 @@ class Scheduler:
             for user_id, queue in self.user_queues.items():
 
                 if queue:
-                    _, _, task = queue[0]
+                    _, _, _, task = queue[0]
 
                     priority = self.compute_priority(task,  max(1, active_users_count))
                     candidates.append((priority, user_id, task))
@@ -62,11 +62,6 @@ class Scheduler:
             _, best_user_id, best_task = max(candidates, key=lambda x: x[0])
 
             heapq.heappop(self.user_queues[best_user_id])
-
-            # active_users_count = max(1, len(self.user_tasks_count))
-            # best = max(self.queue, key=lambda t: self.compute_priority(t, active_users_count))
-            #
-            # self.queue.remove(best)
             self.currently_processing.append(best_task)
             return best_task
 
@@ -77,7 +72,7 @@ class Scheduler:
 
             if self.user_tasks_count[task.user_id] == 0:
                 del self.user_tasks_count[task.user_id]
-            if not self.user_queues[task.user_id]:
+            if task.user_id in self.user_queues and not self.user_queues[task.user_id]:
                 del self.user_queues[task.user_id]
 
     @staticmethod
