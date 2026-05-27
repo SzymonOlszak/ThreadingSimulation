@@ -23,7 +23,8 @@ class Scheduler:
         self.threads = []
         self.user_queues = {}
         self.counter = count()
-
+        self.initial_user_tasks = {}
+        
     def start_threads(self, threads_count, speed):
         for i in range(threads_count):
             t = threading.Thread(target=worker, args=(self, speed), daemon=True)
