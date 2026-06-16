@@ -2,10 +2,11 @@ import threading
 import customtkinter as ctk
 from classes import worker, Task
 import random
+import time
 WIN_WIDTH = 1100
 WIN_HEIGHT = 900
 TITLE = "ThreadsSimulation"
-speed = 2000
+speed = 5000
 
 
 class VisualisationWindow:
@@ -34,23 +35,6 @@ class VisualisationWindow:
         button_font = ("Berlin Sans FB", 22, "bold")
         label_font = ("Berlin Sans FB", 20)
         entry_font = ("Berlin Sans FB", 18)
-
-        # ----BUTTONS
-        # self.buttons_frame = ctk.CTkFrame(self.settings_frame)
-        # self.buttons_frame.grid(row=2, column=1, columnspan=3, sticky="ew", padx=10, pady=10)
-        #
-        # self.start_button = ctk.CTkButton(
-        #     self.buttons_frame,
-        #     text="Add all",
-        #     width=180,
-        #     height=45,
-        #     font=button_font,
-        #     fg_color="#55aa00",
-        #     hover_color="#99ff99",
-        #     text_color="#000000",
-        #     command=self.start_simulation
-        # )
-        # self.start_button.pack(side='left', padx=(150,0))
 
         self.add_user_button = ctk.CTkButton(
             self.settings_frame,
@@ -85,13 +69,6 @@ class VisualisationWindow:
         )
         self.users_entry_label.grid(row=0, column=2, padx=50, pady=(10, 0))
 
-
-        # self.disk_speed_entry = ctk.CTkEntry(self.settings_frame, width=80)
-        # self.disk_speed_entry.insert(0, "1000")
-        # self.disk_speed_entry.grid(row=2, column=2, padx=5, pady=5)
-        # self.disk_speed_label = ctk.CTkLabel(self.settings_frame, text="Disk speed", text_color="gray")
-        # self.disk_speed_label.grid(row=1, column=2, padx=5, pady=5)
-
         self.min_size_entry = ctk.CTkEntry(
             self.settings_frame,
             width=120,
@@ -104,11 +81,11 @@ class VisualisationWindow:
         self.min_size_entry.grid(row=1, column=0, padx=(50, 0), pady=(0, 10))
         self.min_size_label = ctk.CTkLabel(
             self.settings_frame,
-            text="Min size",
+            text="Min size (B)",
             font=label_font,
             text_color="#55aa00"
         )
-        self.min_size_label.grid(row=0, column=0, padx=(50, 0), pady=(10, 0))
+        self.min_size_label.grid(row=0, column=0, padx=(55, 0), pady=(10, 0))
 
         self.max_size_entry = ctk.CTkEntry(
             self.settings_frame,
@@ -123,11 +100,11 @@ class VisualisationWindow:
 
         self.max_size_label = ctk.CTkLabel(
             self.settings_frame,
-            text="Max size",
+            text="Max size (B)",
             font=label_font,
             text_color="#55aa00"
         )
-        self.max_size_label.grid(row=0, column=1, padx=(25, 0), pady=(10, 0), sticky='w')
+        self.max_size_label.grid(row=0, column=1, padx=(12, 0), pady=(10, 0), sticky='w')
 
         self.min_files_entry = ctk.CTkEntry(
             self.settings_frame,
@@ -157,7 +134,7 @@ class VisualisationWindow:
             font=entry_font
         )
         self.max_files_entry.insert(0, "25")
-        self.max_files_entry.grid(row=1, column=4, padx=(0,50), pady=(0, 10))
+        self.max_files_entry.grid(row=1, column=4, padx=(0, 50), pady=(0, 10))
 
         self.max_files_label = ctk.CTkLabel(
             self.settings_frame,
@@ -184,15 +161,21 @@ class VisualisationWindow:
         self.users_widgets = {}
 
         for i in range(5):
-
-            thread = ctk.CTkFrame(self.threads_frame, width=170,  height=100, fg_color="#aaa", corner_radius=10)
+            thread = ctk.CTkFrame(self.threads_frame, width=170, height=140, fg_color="#aaa", corner_radius=10)
             thread.pack(side='left', padx=5, pady=(5, 10), expand=True)
             thread.pack_propagate(False)
-            thread_label = ctk.CTkLabel(thread, text=f"Thread {i + 1}", width=80, text_color="#126500", font=("Berlin Sans FB", 20, "bold"))
+            thread_label = ctk.CTkLabel(thread, text=f"Thread {i + 1}", width=80, text_color="#126500",
+                                        font=("Berlin Sans FB", 20, "bold"))
             thread_label.pack(pady=(20, 10))
             status_label = ctk.CTkLabel(thread, text="Awaiting...", font=("Berlin Sans FB", 15), text_color="gray")
             status_label.pack(padx=20, pady=(2, 10))
-            self.threads_labels.append(status_label)
+            thread_progress = ctk.CTkProgressBar(thread, width=130, height=14)
+            thread_progress.set(0)
+            thread_progress.pack(pady=(0, 10))
+            self.threads_labels.append({
+                "status": status_label,
+                "progress": thread_progress
+            })
 
         self.update()
 
@@ -202,9 +185,8 @@ class VisualisationWindow:
             users_dictionary = self.scheduler.user_tasks_count.copy()
             current_users = set(users_dictionary.keys())
             user_id = 0
-            while user_id in current_users:          # First free ID
+            while user_id in current_users:  # First free ID
                 user_id += 1
-            # user_id = max(current_users, default=-1) + 1
 
             min_size = int(self.min_size_entry.get())
             max_size = int(self.max_size_entry.get())
@@ -213,7 +195,6 @@ class VisualisationWindow:
             # if not hasattr(self.scheduler, "started"):
             if not len(self.scheduler.threads) == 5:
                 self.scheduler.start_threads(5, 5000)
-                # self.scheduler.started = True
 
             tasks_count = random.randint(min_files, max_files)
 
@@ -224,15 +205,15 @@ class VisualisationWindow:
                 self.scheduler.add_task(Task(user_id, file_size))
 
     def update(self):
-        # self.disk_speed_entry.configure(state="disabled")
         with self.scheduler.lock:
-            active_tasks = self.scheduler.currently_processing[:]
-            waiting = sum(len(q) for q in (self.scheduler.user_queues.values()))
-            users = len(self.scheduler.user_tasks_count)
             users_dictionary = self.scheduler.user_tasks_count.copy()
 
             current_users = set(users_dictionary.keys())
             existing_users = set(self.users_widgets.keys())
+            if len(current_users) >= 50:
+                self.add_user_button.configure(state="disabled", fg_color="#555555")
+            else:
+                self.add_user_button.configure(state="normal", fg_color="#55aa00")
 
             for user_id in current_users - existing_users:
                 user = ctk.CTkFrame(
@@ -244,7 +225,7 @@ class VisualisationWindow:
 
                 user.grid_propagate(False)
 
-                # LEFT SIDE
+                # USER AND FILES 
                 left_frame = ctk.CTkFrame(user, fg_color="transparent")
                 left_frame.pack(side="left", padx=20, pady=10, anchor="w")
 
@@ -265,44 +246,46 @@ class VisualisationWindow:
                 files_label.pack(padx=(30, 0))
 
                 # RIGHT SIDE
-                right_frame = ctk.CTkFrame(user, fg_color="transparent")
-                right_frame.pack(side="right", padx=20)
+                right_frame = ctk.CTkFrame(user, fg_color="transparent",  width=520, height=40)
+                right_frame.pack(side="right", padx=20, pady=28)
+                right_frame.pack_propagate(False)
 
-                next_file_label = ctk.CTkLabel(
+                queue_label = ctk.CTkLabel(
                     right_frame,
-                    text="Next: ---",
-                    font=("Berlin Sans FB", 16),
-                    text_color="#cccccc"
+                    text="Queue: ---",
+                    font=("Berlin Sans FB", 20),
+                    text_color="#cccccc",
+                    justify="left",
+                    anchor='w',
                 )
-                next_file_label.pack(pady=(12, 5))
 
-                progress = ctk.CTkProgressBar(
-                    right_frame,
-                    width=300,
-                    height=18
-                )
-                progress.set(0)
-                progress.pack()
+                queue_label.pack(fill='x', pady=(5, 5))
 
                 self.users_widgets[user_id] = {
                     "frame": user,
                     "user_label": user_label,
                     "files_label": files_label,
-                    "next_file_label": next_file_label,
-                    "progress": progress
+                    "queue_label": queue_label
                 }
 
             for i in range(5):
-                if i < len(active_tasks):
-                    task = active_tasks[i]
-                    self.threads_labels[i].configure(text=f"User: {task.user_id + 1}\nSize: {task.file_size}",
-                                                     text_color="green")
-                else:
-                    self.threads_labels[i].configure(text="Awaiting...", text_color="gray")
+                    task = self.scheduler.thread_tasks.get(i)
+                    if task is not None:
+                        self.threads_labels[i]["status"].configure(
+                            text=f"File from user: {task.user_id + 1}\nSize: {round(task.file_size / 1024, 2)} MB", text_color="green")
+
+                        upload_time = task.file_size / speed
+
+                        elapsed = time.time() - task.started_at
+
+                        progress = min(elapsed / upload_time, 1)
+                        self.threads_labels[i]["progress"].set(progress)
+                    else:
+                        self.threads_labels[i]["status"].configure(
+                            text="Awaiting...", text_color="gray")
+                        self.threads_labels[i]["progress"].set(0)
 
             for user_id in current_users:
-                # _, label = self.users_widgets[user_id]
-                # label.configure(text=f"User {user_id + 1}\n{users_dictionary[user_id]} files")
                 widgets = self.users_widgets[user_id]
 
                 widgets["files_label"].configure(
@@ -314,18 +297,25 @@ class VisualisationWindow:
                 if queue:
                     _, _, _, next_task = queue[0]
 
-                    widgets["next_file_label"].configure(
-                        text=f"Next file: {next_task.file_size} MB"
+                    preview = []
+                    sorted_queue = sorted(queue)
+                    for item in sorted_queue[:5]:
+                        _, _, _, task = item
+                        preview.append(f"{round(task.file_size / 1024, 2)} MB")
+
+                    queue_text = ", ".join(preview)
+
+                    if len(queue) > 5:
+                        queue_text += ", ..."
+
+                    widgets["queue_label"].configure(
+                        text=f"Queue: {queue_text}"
                     )
                 else:
-                    widgets["next_file_label"].configure(
+
+                    widgets["queue_label"].configure(
                         text="Queue empty"
                     )
-
-                initial_files = self.scheduler.initial_user_tasks.get(user_id, 1)
-                progress_value = 1 - (users_dictionary[user_id] / initial_files)
-
-                widgets["progress"].set(progress_value)
 
             for user_id in existing_users - current_users:
                 widgets = self.users_widgets[user_id]

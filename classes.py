@@ -8,11 +8,13 @@ import tkinter as Tk
 from collections import defaultdict
 from itertools import count
 
+
 class Task:
     def __init__(self, user_id, file_size):
         self.user_id = user_id
         self.file_size = file_size
         self.created_at = time.time()
+        self.started_at = None
 
 
 class Scheduler:
@@ -24,10 +26,17 @@ class Scheduler:
         self.user_queues = {}
         self.counter = count()
         self.initial_user_tasks = {}
+        self.thread_tasks = {
+            0: None,
+            1: None,
+            2: None,
+            3: None,
+            4: None
+        }
         
     def start_threads(self, threads_count, speed):
         for i in range(threads_count):
-            t = threading.Thread(target=worker, args=(self, speed), daemon=True)
+            t = threading.Thread(target=worker, args=(self, speed, i), daemon=True)
             t.start()
             self.threads.append(t)
 
@@ -84,18 +93,22 @@ class Scheduler:
         return waiting_factor + size_factor
 
 
-def worker(scheduler, upload_speed):
+def worker(scheduler, upload_speed, thread_id):
     while True:
         task = scheduler.get_task()
         if not task:
-            time.sleep(0.1)
+            time.sleep(0.5)
             continue
 
+        with scheduler.lock:
+            scheduler.thread_tasks[thread_id] = task
         print(f"Uploading user {task.user_id}, size {task.file_size}")
-
+        task.started_at = time.time()
         time.sleep(task.file_size / upload_speed) # + random.uniform(0.1, 0.5))
 
         scheduler.complete_task(task)
+        with scheduler.lock:
+            scheduler.thread_tasks[thread_id] = None
         print(f"Done user {task.user_id}")
 
 
